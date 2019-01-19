@@ -102,3 +102,23 @@ size_t parseXYZ(XYZType)(const(char)[] str, out XYZType color) @trusted pure not
         return 0;
     return s.ptr + 1 - str.ptr;
 }
+
+
+// HACK: this will be refactored into an actual color conversion function later on...
+To convertColor(To, From)(From src) if (is(To == XYZ) && is(From == xyY))
+{
+    if (src.y == 0)
+        return To(0, 0, 0);
+    else
+        return To((src.Y/src.y)*src.x, src.Y, (src.Y/src.y)*(1-src.x-src.y));
+}
+
+To convertColor(To, From)(From src) if (is(To == xyY) && is(From == XYZ))
+{
+    import wg.color.standard_illuminant : StandardIlluminant;
+    auto sum = src.X + src.Y + src.Z;
+    if (sum == 0)
+        return To(StandardIlluminant.D65.x, StandardIlluminant.D65.y, 0);
+    else
+        return To(src.X/sum, src.Y/sum, src.Y);
+}
