@@ -8,9 +8,10 @@
 module wg.color.rgb.colorspace;
 
 import wg.color.standard_illuminant;
-import wg.color.xyz : xyY;
+import wg.color.xyz;
 
 import wg.util.format : formatReal;
+import wg.util.math;
 import wg.util.traits : isFloatingPoint;
 
 
@@ -170,6 +171,42 @@ immutable(RGBColorSpace)* findRGBColorspace(const(char)[] name) pure nothrow @no
             return &def;
     }
     return null;
+}
+
+
+/**
+ RGB to XYZ color space transformation matrix.$(BR)
+ $(D_INLINECODE cs) describes the source RGB color space.
+ */
+F[3][3] rgbToXyzMatrix(F = double)(RGBColorSpace!F cs) if (isFloatingPoint!F)
+{
+    static XYZ!F toXYZ(xyY!F c) { return c.y == F(0) ? XYZ!F() : XYZ!F(c.x/c.y, F(1), (F(1)-c.x-c.y)/c.y); }
+
+    // build a matrix from the 3 color vectors
+    auto r = toXYZ(cs.red);
+    auto g = toXYZ(cs.green);
+    auto b = toXYZ(cs.blue);
+    F[3][3] m = [[ r.X, g.X, b.X],
+                 [ r.Y, g.Y, b.Y],
+                 [ r.Z, g.Z, b.Z]];
+
+    // multiply by the StandardIlluminant
+    F[3] w = [ toXYZ(cs.white).tupleof ];
+    auto s = multiply(inverse(m), w);
+
+    // return colorspace matrix (RGB -> XYZ)
+    return [[ r.X*s[0], g.X*s[1], b.X*s[2] ],
+            [ r.Y*s[0], g.Y*s[1], b.Y*s[2] ],
+            [ r.Z*s[0], g.Z*s[1], b.Z*s[2] ]];
+}
+
+/**
+ XYZ to RGB color space transformation matrix.$(BR)
+ $(D_INLINECODE cs) describes the target RGB color space.
+ */
+F[3][3] xyzToRgbMatrix(F = double)(RGBColorSpace!F cs) if (isFloatingPoint!F)
+{
+    return inverse(rgbToXyzMatrix(cs));
 }
 
 
